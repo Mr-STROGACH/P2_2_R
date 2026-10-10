@@ -1,0 +1,10 @@
+# Артефакты рендеринга (не нужны в репозитории)
+P2_2_files/
+P2_2_report.html
+P2_2_run_log.txt
+
+# Служебные файлы RStudio
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
