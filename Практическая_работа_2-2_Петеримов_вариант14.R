@@ -8,7 +8,15 @@ suppressPackageStartupMessages({
 
 L <- character()
 p <- function(...) {
-  txt <- paste0(...)
+  # Аргументы склеиваются; если на стыке нет пробела, он добавляется сам,
+  # иначе в отчёте получались склейки вида "characterобщего" или "19.39°C".
+  parts <- list(...)
+  txt <- as.character(parts[[1]])
+  for (x in parts[-1]) {
+    x <- as.character(x)
+    sep <- ifelse(grepl("[[:space:]]$", txt) | grepl("^[[:space:]]", x), "", " ")
+    txt <- paste0(txt, sep, x)
+  }
   L <<- c(L, strsplit(txt, "\n", fixed = TRUE)[[1]])
   cat(txt, "\n", sep = "")
 }
@@ -325,6 +333,23 @@ r37 <- airports %>% arrange(desc(lat)) %>% head(3) %>% select(faa, name, lat, lo
 p("Топ-3 самых северных аэропортов (по lat):")
 pr(r37)
 
+# Проверка данных: у всех аэропортов набора, кроме нескольких, долгота отрицательная
+# (западное полушарие). Если lon > 0 — значит, в записи перепутаны lat и lon либо
+# потерян знак минуса. Без этой проверки ответ получается неверным.
+code("airports %>% filter(lon > 0) %>% select(faa, name, lat, lon)")
+r37b <- airports %>% filter(lon > 0) %>% select(faa, name, lat, lon)
+p("Аэропорты с положительной долготой (признак ошибки координат в наборе данных):")
+pr(r37b)
+p("EEN (Dillant Hopkins Airport) записан в наборе как 72.3 / 42.9, но этот аэропорт находится")
+p("в городе Кин, Нью-Гэмпшир, то есть его настоящие координаты — 42.9 с. ш., 72.3 з. д.:")
+p("широта и долгота перепутаны местами. У DVT и MYF потерян знак долготы (оба на западе США).")
+code('airports %>% filter(faa %in% c("EEN", "BRW")) %>% select(faa, name, lat, lon)')
+p("Сверка двух претендентов на «самый северный»:")
+pr(airports %>% filter(faa %in% c("EEN", "BRW")) %>% select(faa, name, lat, lon))
+p("ВЫВОД: формально максимальная lat у EEN (72.3), но это значение — на самом деле долгота.")
+p("Реально самый северный аэропорт набора — BRW, Wiley Post Will Rogers Memorial")
+p("(Уткиагвик, Аляска), 71.3 с. ш.; следующий — AIN, Wainwright Airport (70.6 с. ш.).")
+
 p("")
 p("[3.8] Какой аэропорт самый высокогорный (выше всех над уровнем моря)?")
 code("airports %>% arrange(desc(alt)) %>% head(3)")
@@ -640,10 +665,13 @@ p("2.10  самый частый цвет глаз                   :", top_eye
 p("3.1   наборов данных в nycflights13           :", nrow(ds_ny))
 p("3.5   перевозчиков в рейсах                    :", r35$n_carriers)
 p("3.6   рейсов из JFK в мае                      :", r36_dep$n)
+p("3.7   самый северный аэропорт (с поправкой на ошибку координат): BRW — Wiley Post Will Rogers Mem, 71.3 с. ш.")
+p("3.8   самый высокогорный аэропорт              :", r38$name[1], "(", r38$alt[1], "фут )")
 p("3.9   самый старый год выпуска самолёта        :", oldest_year)
 p("3.10  средняя температура сентября в JFK, °C   :", round(r310$mean_c, 2))
 p("3.11  больше всего вылетов в июне             :", best6, "-", airline_name)
-p("3.12  чаще других задерживались в 2013          :", b12, "-", airlines %>% filter(carrier == b12) %>% pull(name))
+p("3.12  чаще других задерживались в 2013          :", b12, "-", airlines %>% filter(carrier == b12) %>% pull(name),
+  "(по числу задержек; по средней задержке — F9 Frontier Airlines Inc., по доле задержек — WN Southwest Airlines Co.)")
 p("3.13  больше всего рейсов в 2013               :", r313$name[1])
 p("3.14  топ-1 аэропорт по средней задержке        :", r314$name[1], "(", r314$mean_arr_delay[1], "мин )")
 p("4.1   средняя масса starwars                   :", a1)
